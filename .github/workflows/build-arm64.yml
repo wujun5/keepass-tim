@@ -9,10 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up QEMU for cross-platform builds
       uses: docker/setup-qemu-action@v3
       with:
@@ -25,73 +25,73 @@ jobs:
       run: |
         # Create Dockerfile for ARM64 build
         cat > Dockerfile.arm64 << 'EOF'
-FROM arm64v8/debian:bookworm
+        FROM arm64v8/debian:bookworm
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    g++ \
-    git \
-    asciidoctor \
-    qtbase5-dev \
-    qtbase5-private-dev \
-    qttools5-dev \
-    qttools5-dev-tools \
-    libqt5svg5-dev \
-    libqt5x11extras5-dev \
-    libargon2-dev \
-    libminizip-dev \
-    libbotan-2-dev \
-    libqrencode-dev \
-    libkeyutils-dev \
-    zlib1g-dev \
-    libreadline-dev \
-    libpcsclite-dev \
-    libusb-1.0-0-dev \
-    libxi-dev \
-    libxtst-dev \
-    && rm -rf /var/lib/apt/lists/*
+        # Install dependencies
+        RUN apt-get update && apt-get install -y \
+            build-essential \
+            cmake \
+            g++ \
+            git \
+            asciidoctor \
+            qtbase5-dev \
+            qtbase5-private-dev \
+            qttools5-dev \
+            qttools5-dev-tools \
+            libqt5svg5-dev \
+            libqt5x11extras5-dev \
+            libargon2-dev \
+            libminizip-dev \
+            libbotan-2-dev \
+            libqrencode-dev \
+            libkeyutils-dev \
+            zlib1g-dev \
+            libreadline-dev \
+            libpcsclite-dev \
+            libusb-1.0-0-dev \
+            libxi-dev \
+            libxtst-dev \
+            && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /opt
+        # Set working directory
+        WORKDIR /opt
 
-# Clone KeePassXC
-RUN git clone https://github.com/keepassxreboot/keepassxc.git
-WORKDIR /opt/keepassxc
+        # Clone KeePassXC
+        RUN git clone https://github.com/keepassxreboot/keepassxc.git
+        WORKDIR /opt/keepassxc
 
-# Checkout latest release
-RUN git fetch && \
-    LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) && \
-    git checkout $LATEST_TAG
+        # Checkout latest release
+        RUN git fetch && \
+            LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) && \
+            git checkout $LATEST_TAG
 
-# Create build directory
-RUN mkdir -p build
-WORKDIR /opt/keepassxc/build
+        # Create build directory
+        RUN mkdir -p build
+        WORKDIR /opt/keepassxc/build
 
-# Configure build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DWITH_XC_ALL=ON ..
+        # Configure build
+        RUN cmake -DCMAKE_BUILD_TYPE=Release -DWITH_XC_ALL=ON ..
 
-# Build
-RUN make -j$(nproc)
+        # Build
+        RUN make -j$(nproc)
 
-# Create installation package
-RUN make DESTDIR=/opt/install-root install
+        # Create installation package
+        RUN make DESTDIR=/opt/install-root install
 
-# Create archive
-RUN cd /opt/install-root && \
-    tar czf /opt/keepassxc-arm64-linux.tar.gz .
+        # Create archive
+        RUN cd /opt/install-root && \
+            tar czf /opt/keepassxc-arm64-linux.tar.gz .
 
-WORKDIR /opt
-CMD ["bash", "-c", "echo Build complete! && ls -la keepassxc-arm64-linux.tar.gz"]
-EOF
+        WORKDIR /opt
+        CMD ["bash", "-c", "echo Build complete! && ls -la keepassxc-arm64-linux.tar.gz"]
+        EOF
 
         # Build and run the Docker container
         docker build -t keepassxc-builder-arm64 -f Dockerfile.arm64 .
         docker run --rm -v $(pwd):/workspace keepassxc-builder-arm64
-        
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: keepassxc-arm64-build
-        path: keepassxc-arm64-linux.tar.gz
+        path: /opt/keepassxc/build/keepassxc-arm64-linux.tar.gz
